@@ -1,6 +1,5 @@
 name: Build Mieda Vocab APK
 
-# 触发规则：当你推送到 main 分支，或者手动点击按钮时触发
 on:
   push:
     branches: [ main ]
@@ -11,26 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 拉取你的代码
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 清理服务器磁盘空间 (Android SDK 很大，不清理容易爆盘失败)
+      # 修复点 1：修正了清理空间插件的地址
       - name: Free Disk Space
-        uses: jlumbroso/free-disk-space-main@v1
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: true
           android: true
 
-      # 3. 使用 Buildozer 进行打包
+      # 修复点 2：修正了 Buildozer 插件的地址
       - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action-v1@v3
+        uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
           command: buildozer android debug
-          buildozer_version: master
+          buildozer_version: stable
 
-      # 4. 上传打包好的 APK 供你下载
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
