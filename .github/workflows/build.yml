@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 清理空间 (Android 打包需要大量空间，这一步很关键)
+      # 2. 清理空间
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      # 4. 安装系统依赖 (这是 Buildozer 在 Linux 上运行必须的库)
+      # 4. 安装系统依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -36,19 +36,26 @@ jobs:
             autoconf libtool pkg-config zlib1g-dev \
             libncurses5-dev libncursesw5-dev libtinfo5 \
             cmake libffi-dev libssl-dev
-            
-      # 5. 安装 Buildozer
+
+      # 5. 安装 Buildozer 和 Cython (关键修改：不限制 Cython 版本，让它装 3.x)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
-          pip install buildozer cython==0.29.36
+          pip install buildozer
+          pip install "cython>=3.0" 
 
-      # 6. 开始打包 (使用 yes | 自动同意 SDK 协议)
+      # 6. 清理旧的 buildozer 缓存 (防止之前的错误缓存导致失败)
+      - name: Clean Buildozer
+        run: |
+          rm -rf .buildozer
+          rm -rf bin
+
+      # 7. 开始打包
       - name: Build with Buildozer
         run: |
           yes | buildozer android debug
 
-      # 7. 上传 APK
+      # 8. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
