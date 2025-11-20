@@ -7,13 +7,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # 使用最新的 Ubuntu 24.04
+    runs-on: ubuntu-latest # 继续使用最新的 Ubuntu 24.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. 设置 Java 17 (Android API 33 必须)
+      # 1. 设置 Java 17 (现代 Android 开发标准)
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -31,20 +31,14 @@ jobs:
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: true
-          android: true
+          android: true # 注意：这里设为 true 可能会清理掉部分 SDK，但主要环境通常保留
 
-      # 4. 关键步骤：安装系统依赖 + 手动修复 libtinfo5
-      - name: Install System Dependencies
+      # 4. 修复 Ubuntu 24.04 缺失的旧版库 (libtinfo5)
+      # 即使使用系统 SDK，部分底层编译工具仍可能需要它
+      - name: Fix Missing Libraries
         run: |
           sudo apt-get update
-          # 安装基础编译工具
-          sudo apt-get install -y \
-            build-essential git zip unzip autoconf libtool pkg-config \
-            libncurses5-dev libncursesw5-dev libffi-dev libssl-dev \
-            zlib1g-dev cmake
-          
-          # === 核心修复 ===
-          # Ubuntu 24.04 删除了 libtinfo5，我们需要从旧源手动下载安装
+          sudo apt-get install -y build-essential git zip unzip autoconf libtool pkg-config zlib1g-dev cmake
           wget http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.2-0ubuntu2_amd64.deb
           sudo dpkg -i libtinfo5_6.2-0ubuntu2_amd64.deb
           rm libtinfo5_6.2-0ubuntu2_amd64.deb
@@ -56,21 +50,33 @@ jobs:
           pip install buildozer
           pip install "cython>=3.0"
 
-      # 6. 清理旧缓存
-      - name: Clean Old Builds
+      # ========================================================
+      # 关键修改：强制 Buildozer 使用系统预装的 SDK/NDK
+      # ========================================================
+      - name: Configure Buildozer to use System SDK
         run: |
-          rm -rf .buildozer
-          rm -rf bin
+          # 1. 注入系统环境变量中的 SDK 和 NDK 路径到 buildozer.spec
+          echo "android.sdk_path = $ANDROID_HOME" >> buildozer.spec
+          echo "android.ndk_path = $ANDROID_NDK_HOME" >> buildozer.spec
+          
+          # 2. 允许使用系统 NDK 版本 (防止 buildozer 因为版本号对不上而报错)
+          # 我们把 spec 里写死的 "android.ndk = 25b" 注释掉，让它听系统的
+          sed -i 's/^android.ndk = 25b/# android.ndk = 25b/' buildozer.spec
+          
+          # 3. 打印一下路径确认 (调试用)
+          echo "Using SDK at: $ANDROID_HOME"
+          echo "Using NDK at: $ANDROID_NDK_HOME"
 
-      # 7. 开始打包 (使用 yes 同意协议)
+      # 6. 开始打包
       - name: Build with Buildozer
         run: |
+          # 这里的 yes 是为了同意构建过程中可能出现的额外许可
           yes | buildozer android debug
         env:
-          # 限制 Gradle 内存，防止崩溃
+          # 限制 Gradle 内存防止 OOM
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2048m"
 
-      # 8. 上传 APK
+      # 7. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
