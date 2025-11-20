@@ -1,0 +1,35 @@
+name: Build Mieda Vocab APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 清理磁盘空间，防止打包中断
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space-main@v1
+        with:
+          tool-cache: true
+          android: true
+
+      # 开始打包
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action-v1@v3
+        with:
+          command: buildozer android debug
+          buildozer_version: master
+
+      # 上传打包好的 APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mieda-vocab-package
+          path: bin/*.apk
