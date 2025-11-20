@@ -7,27 +7,25 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 关键修改：强制使用 ubuntu-22.04，它包含 libtinfo5 和旧版依赖
+    runs-on: ubuntu-22.04
 
     steps:
-      # 1. 拉取代码
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 清理空间
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: true
           android: true
 
-      # 3. 设置 Python 环境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 4. 安装系统依赖
+      # 安装依赖 (在 Ubuntu 22.04 下这些包都能找到)
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -37,25 +35,24 @@ jobs:
             libncurses5-dev libncursesw5-dev libtinfo5 \
             cmake libffi-dev libssl-dev
 
-      # 5. 安装 Buildozer 和 Cython (关键修改：不限制 Cython 版本，让它装 3.x)
+      # 安装打包工具 (允许 Cython 3.x 以适配 Kivy 2.3.0)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer
-          pip install "cython>=3.0" 
+          pip install "cython>=3.0"
 
-      # 6. 清理旧的 buildozer 缓存 (防止之前的错误缓存导致失败)
+      # 清理旧缓存
       - name: Clean Buildozer
         run: |
           rm -rf .buildozer
           rm -rf bin
 
-      # 7. 开始打包
+      # 开始打包
       - name: Build with Buildozer
         run: |
           yes | buildozer android debug
 
-      # 8. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
